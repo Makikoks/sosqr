@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:csv/csv.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -42,20 +46,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
       _selectedIndex = index;
     });
 
-      NavigationUtils.navigateToScreen(context, index,
-        username: widget.username,
-        firstName: widget.firstName,
-        lastName: widget.lastName,
-        pictureURL: widget.pictureURL,
-        accessKey: widget.accessKey,
-        userDocID: widget.userDocID,
-        password: widget.password,
-        department: widget.department,
-        role: widget.role,
-      );
-      setState(() {
-        _selectedIndex = index;
-      });
+    NavigationUtils.navigateToScreen(context, index,
+      username: widget.username,
+      firstName: widget.firstName,
+      lastName: widget.lastName,
+      pictureURL: widget.pictureURL,
+      accessKey: widget.accessKey,
+      userDocID: widget.userDocID,
+      password: widget.password,
+      department: widget.department,
+      role: widget.role,
+    );
+    setState(() {
+      _selectedIndex = index;
+    });
 
   }
 
@@ -113,9 +117,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => AdminAnnouncementManager(
+                    builder: (context) => AdminAnnouncementManager(
 
-                      ),
+                    ),
                   ),
                 );
               },
@@ -385,6 +389,12 @@ class UsersListScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text('All Users'),
         backgroundColor: Color(0xFF0057FF),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.download),
+            onPressed: () => _exportUsersToCSV(context), // Pass context
+          ),
+        ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('users').snapshots(),
@@ -430,5 +440,56 @@ class UsersListScreen extends StatelessWidget {
         },
       ),
     );
+  }
+  // Export users' information to CSV
+  Future<void> _exportUsersToCSV(BuildContext context) async {
+    try {
+      // Step 1: Fetch users from Firestore
+      QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('users').get();
+
+      // Step 2: Prepare CSV rows
+      List<List<dynamic>> rows = [
+        ['accessKey', 'department', 'firstName', 'lastName', 'username', 'password', 'pictureURL', 'role', 'userDocID']
+      ];
+
+      for (var doc in snapshot.docs) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        List<dynamic> row = [
+          data['accessKey'],
+          data['department'],
+          data['firstName'],
+          data['lastName'],
+          data['username'],
+          data['password'],
+          data['pictureURL'],
+          data['role'],
+          doc.id,
+        ];
+        rows.add(row);
+      }
+
+      String csv = const ListToCsvConverter().convert(rows);
+
+      // Step 3: Use File Picker to choose a location
+      String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+
+      if (selectedDirectory != null) {
+        // Step 4: Write the CSV file to the selected directory
+        File file = File('$selectedDirectory/users.csv');
+        await file.writeAsString(csv);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('CSV saved to $selectedDirectory/users.csv')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('File path not selected')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to export users: $e')),
+      );
+    }
   }
 }

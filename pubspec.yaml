@@ -87,6 +87,7 @@ flutter:
     - assets/SOS-globe.png
     - assets/SOS-logo.png
     - assets/ATbrxjpyc.jpg
+    - assets/placeholder.png
 
   fonts:
     - family: Jost

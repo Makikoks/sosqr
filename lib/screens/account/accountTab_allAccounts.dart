@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'accountTab_editProfile.dart';
 import 'package:intl/intl.dart';
+import 'package:csv/csv.dart';
 
 
 
@@ -293,7 +294,7 @@ class _AllLogsState extends State<AllLogs> {
     }
   }
 
-  Future<void> _exportLogsToPDF() async {
+  Future<void> _exportLogsToCSV() async {
     if (_selectedDateRange == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please select a date range first')),
@@ -305,12 +306,7 @@ class _AllLogsState extends State<AllLogs> {
       final Directory? appDocDir = await getExternalStorageDirectory();
       if (appDocDir != null) {
         final String appDocPath = appDocDir.path;
-        final File tempFile = File('$appDocPath/logs_${DateTime.now().toIso8601String()}.pdf');
-
-        // Load the logo image from assets
-        final ByteData logoData = await rootBundle.load('assets/SOS-logo.png');
-        final Uint8List logoBytes = logoData.buffer.asUint8List();
-        final pw.ImageProvider logo = pw.MemoryImage(logoBytes);
+        final File tempFile = File('$appDocPath/logs_${DateTime.now().toIso8601String()}.csv');
 
         // Fetch logs from Firestore
         QuerySnapshot logsSnapshot = await FirebaseFirestore.instance
@@ -318,67 +314,30 @@ class _AllLogsState extends State<AllLogs> {
             .where('userDocID', isEqualTo: widget.userDocID)
             .get();
 
-        final pdf = pw.Document();
+        // Prepare the data for CSV
+        List<List<String>> csvData = [
+          <String>['Log Text', 'Timestamp'], // CSV Headers
+        ];
+
         final logEntries = logsSnapshot.docs.map((doc) {
           String logText = doc['logText'] ?? 'No log text available';
           String timestamp = (doc['timestamp'] as Timestamp).toDate().toString();
-          return {
-            'logText': logText,
-            'timestamp': timestamp,
-          };
+          return <String>[logText, timestamp];
         }).toList();
 
-        pdf.addPage(
-          pw.Page(
-            build: (pw.Context context) {
-              return pw.Column(
-                children: [
-                  pw.Image(logo, width: 300, height: 300), //Logo image
-                  // Header with user's first and last name
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.center,
-                    children:[
-                      pw.Text(
-                      '${widget.firstName} ${widget.lastName} - Logs',
-                      style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  pw.SizedBox(height: 20), // Space between header and logs
-                  // Log entries
-                  ...logEntries.map((entry) {
-                    return pw.Container(
-                      margin: const pw.EdgeInsets.symmetric(vertical: 4.0),
-                      child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(
-                            entry['logText'] ?? 'No log text available',
-                            style: pw.TextStyle(fontSize: 18, color: PdfColors.black),
-                          ),
-                          pw.Text(
-                            entry['timestamp'] ?? 'No timestamp available',
-                            style: pw.TextStyle(fontSize: 14, color: PdfColors.grey),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ],
-              );
-            },
-          ),
-        );
+        // Add the log entries to CSV data
+        csvData.addAll(logEntries);
 
-        // Save PDF locally
-        await tempFile.writeAsBytes(await pdf.save());
+        // Convert to CSV string
+        String csvString = const ListToCsvConverter().convert(csvData);
+
+        // Write the CSV string to a file
+        await tempFile.writeAsString(csvString);
 
         // Open the file
-        await OpenFile.open(tempFile.path);
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('File downloaded and opened successfully'),
+            content: Text('CSV file downloaded successfully'),
           ),
         );
       } else {
@@ -487,7 +446,7 @@ class _AllLogsState extends State<AllLogs> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          await _exportLogsToPDF();
+          await _exportLogsToCSV();
         },
         child: Icon(Icons.download),
         backgroundColor: Color(0xFF0057FF),

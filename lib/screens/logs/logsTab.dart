@@ -175,7 +175,7 @@ class _LogsTabState extends State<LogsTab> {
               label: 'Account',
             ),
           ]
-          : const [
+              : const [
             BottomNavigationBarItem(
               icon: Icon(Icons.qr_code),
               label: 'QR Scanner',
