@@ -156,15 +156,18 @@ class _AccountTabState extends State<AccountTab> {
 
         // Step 5: Loop through each row in the CSV and add it to Firestore
         for (var row in csvTable.skip(1)) {
-          if (row.length == 6) {
-            DocumentReference docRef = FirebaseFirestore.instance.collection('usersPending').doc();
+          if (row.length == 9) {
+            DocumentReference docRef = FirebaseFirestore.instance.collection('users').doc();
             batch.set(docRef, {
-              'username': row[0],
-              'firstName': row[1],
-              'lastName': row[2],
-              'password': row[3],
-              'department': row[4],
-              'role': row[5],
+              'accessKey': row[0].toString(),
+              'department': row[1].toString(),
+              'firstName': row[2].toString(),
+              'lastName': row[3].toString(),
+              'username': row[4].toString(),
+              'password': row[5].toString(),
+              'pictureURL': row[6].toString(),
+              'role': row [7].toString(),
+              'userDocID': row[8].toString(),
             });
           } else {
             print('Skipped row due to incorrect format: $row');  // Log skipped rows
@@ -220,6 +223,7 @@ class _AccountTabState extends State<AccountTab> {
               children: [
                 Expanded(
                   child: SingleChildScrollView(
+                    physics: NeverScrollableScrollPhysics(),
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.only(
@@ -294,15 +298,20 @@ class _AccountTabState extends State<AccountTab> {
                                       fontSize: 24,
                                       fontWeight: FontWeight.bold,
                                     ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
+
                                   const SizedBox(width: 2),
-                                  Text(
+                                  Flexible(
+                                  child: Text(
                                     '(${widget.userDocID ?? ''})',
                                     style: const TextStyle(
                                       fontFamily: 'Jost',
                                       color: Colors.white,
                                       fontSize: 14,
                                     ),
+                                    overflow: TextOverflow.ellipsis,
+                                  )
                                   )
                                 ],
                               ),
